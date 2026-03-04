@@ -1,0 +1,121 @@
+<?php
+// -------------------------------------------------------------
+// Front Controller del mini-framework
+// -------------------------------------------------------------
+
+require_once __DIR__ . '/../app/libs/Config.php';
+// Nuevos nombres (se mantienen bGeneral/bSeguridad como compatibilidad)
+require_once __DIR__ . '/../app/libs/validacion.php';
+require_once __DIR__ . '/../app/libs/seguridad.php';
+require_once __DIR__ . '/../app/Core/autoload.php';
+
+
+// -------------------------------------------------------------
+// Sesión segura
+// -------------------------------------------------------------
+$session = new SessionManager(
+    loginPage: 'index.php?ctl=inicio',
+    timeout: 600
+);
+
+// Comprobaciones de seguridad (fingerprint + timeout)
+$session->checkSecurity();
+
+// -------------------------------------------------------------
+// Mapa de rutas
+// -------------------------------------------------------------
+    $map = [
+        'error' => [
+            'controller' => 'Controller',
+            'action' => 'error',
+            'nivel' => 1
+        ],
+        'inicio' => [
+            'controller' => 'InicioController',        
+            'action' => 'inicio',          
+            'nivel' => 1
+        ],
+        'iniciarSesion' => [
+            'controller' => 'UsuarioController',        
+            'action' => 'iniciarSesion',          
+            'nivel' => 1
+        ],
+
+         'registro' => [
+            'controller' => 'UsuarioController',        
+            'action' => 'registro',          
+            'nivel' => 1
+        ],
+         'verTareas' => [
+            'controller' => 'TareaController',        
+            'action' => 'verTareas',          
+            'nivel' => 2
+        ],
+          'eliminarTarea' => [
+            'controller' => 'TareaController',        
+            'action' => 'eliminarTarea',          
+            'nivel' => 2
+        ],
+        'crearTarea' => [
+            'controller' => 'TareaController',        
+            'action' => 'crearTarea',          
+            'nivel' => 2
+        ],
+          'cerrarSesion' => [
+            'controller' => 'UsuarioController',        
+            'action' => 'cerrarSesion',          
+            'nivel' => 2 // porque solo pueden cerrar sesion los usuarios logueados
+        ],
+         'editarTarea' => [
+            'controller' => 'TareaController',        
+            'action' => 'editarTarea',          
+            'nivel' => 2 // porque solo pueden cerrar sesion los usuarios logueados
+        ],
+        
+        
+
+
+
+        // Rutas de autenticación
+
+        // Rutas para gestionar tareas ...
+
+    ];
+
+// -------------------------------------------------------------
+// Resolución de ruta
+// -------------------------------------------------------------
+$ruta = $_GET['ctl'] ?? 'inicio';
+
+if (!isset($map[$ruta])) {
+    header("HTTP/1.0 404 Not Found");
+    echo "<h1>Error 404: Ruta '$ruta' no encontrada</h1>";
+    exit;
+}
+
+$controllerName = $map[$ruta]['controller'];
+$actionName     = $map[$ruta]['action'];
+$requiredLevel  = $map[$ruta]['nivel'];
+
+// -------------------------------------------------------------
+// Comprobación de permisos
+// -------------------------------------------------------------
+if (!$session->hasLevel($requiredLevel)) {
+    header("HTTP/1.0 403 Forbidden");
+    echo "<h1>403: No tienes permisos para acceder a esta acción</h1>";
+    exit;
+}
+
+// -------------------------------------------------------------
+// Ejecución del controlador
+// -------------------------------------------------------------
+$controller = new $controllerName($session);
+
+if (!method_exists($controller, $actionName)) {
+    header("HTTP/1.0 404 Not Found");
+    echo "<h1>Error 404: Acción '$actionName' no encontrada en $controllerName</h1>";
+    exit;
+}
+
+$controller->$actionName();
+?>
